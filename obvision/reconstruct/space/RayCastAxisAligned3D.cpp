@@ -28,14 +28,14 @@ void RayCastAxisAligned3D::calcCoords(TsdSpace* space, obfloat* coords, obfloat*
 
   TsdSpacePartition**** partitions = space->getPartitions();
 
-  // buffer for registration of zero crossings: in each cell, only one zero crossing should be detected
-  bool*** zeroCrossing;
-  System<bool>::allocate(partitionSize, partitionSize, partitionSize, zeroCrossing);
 
 #pragma omp parallel for
   // Leave out outmost partitions, since the triangulation of normals needs access to neighboring partitions
   for(unsigned int z=1; z<partitionsInZ-1; z++)
   {
+    // buffer for registration of zero crossings: in each cell, only one zero crossing should be detected
+    bool*** zeroCrossing;
+    System<bool>::allocate(partitionSize, partitionSize, partitionSize, zeroCrossing);
     for(unsigned int y=1; y<partitionsInY-1; y++)
     {
       for(unsigned int x=1; x<partitionsInX-1; x++)
@@ -150,9 +150,9 @@ void RayCastAxisAligned3D::calcCoords(TsdSpace* space, obfloat* coords, obfloat*
         }
       }
     }
+    System<bool>::deallocate(zeroCrossing);
   }
 
-  System<bool>::deallocate(zeroCrossing);
 
   LOGMSG(DBG_DEBUG, "Elapsed TSDF projection: " << t.elapsed() << "ms");
   LOGMSG(DBG_DEBUG, "Raycasting finished! Found " << *cnt << " coordinates");
