@@ -329,15 +329,16 @@ void TsdSpace::pushForward(Sensor* const sensor)
       for(int i = 0; i < dim; ++i)
       {
         crd[i] = (*rays)(i, beam) * data[beam] + tr[i];
+        //go back -_maxTruncation on beam:
         beamCrd[i] = (crd[i] + (*rays)(i, beam) * (-_maxTruncation));
       }
 
+      //Stepsize for moving on beam
       double stepSize = _voxelSize / 2;
       int steps = _maxTruncation / stepSize;
 
       for(int i = 0; i < steps * 2; ++i)
       {
-
         // => project measurement to cell index
         int vIdx[dim];
         int pIdx[dim];

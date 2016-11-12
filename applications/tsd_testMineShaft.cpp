@@ -38,19 +38,20 @@ void generateSyntheticData(SensorPolar2DWith3DPose& sensor)
   for(int i = 0; i < beams; i++)
   {
     double n[2] = {0,0};
+
+    //wall on x
     n[0] = std::abs(wallDistance / (*rays)(0, i));
+
+    //wall on y
     n[1] = std::abs(wallDistance / (*rays)(1, i));
 
-    double min = 99999;
-    for(int j = 0; j < 2; ++j)
-    {
-      if(min > n[j])
-      {
-        min = n[j];
-      }
-    }
+    //take nearest wall for distance
+    double min = n[0] < n[1] ? n[0] : n[1];
 
+    //check maxRange
     data[i] = min <= maxRange ? min : NAN;
+
+    //color it red
     rgb[i * 3] = 255;
   }
   sensor.setRealMeasurementData(data);
@@ -60,22 +61,34 @@ void generateSyntheticData(SensorPolar2DWith3DPose& sensor)
 
 void _cbRegNewImage(void)
 {
+  //double tf[16] = {
+  //    1, 0, 0, 1,
+  //    0, 1, 0, 1,
+  //    0, 0, 1, 1
+  //};
+  //
+  //Matrix T(4, 4);
+  //T.setData(tf);
+  //_sensor->transform(&T);
+
   Matrix T = _sensor->getTransformation();
   T(2, 3) = T(2, 3) + 0.01;
   _sensor->setTransformation(T);
-  //_sensor->transform(&T);
-//  generateSyntheticData(*_sensor);
+
+
+
+  generateSyntheticData(*_sensor);
   _space->pushForward(_sensor);
   _viewer->showSensorPose(T);
 
   unsigned int cnt;
 
   unsigned int cells = _space->getXDimension() * _space->getYDimension() * _space->getZDimension();
-  double* coords = new double[cells];
-  double* normals = new double[cells];
+  double* coords = new double[cells * 3];
+  double* normals = new double[cells * 3];
   unsigned char* rgb = new unsigned char[cells * 3];
   RayCastAxisAligned3D raycaster;
-  raycaster.calcCoords(_space, coords, normals, rgb, &cnt);
+  raycaster.calcCoords(_space, coords, NULL, NULL, &cnt);
 
   _vcloud->setCoords(coords, cnt / 3, 3, NULL);
   //_vcloud->setColors(rgb, cnt / 3 ,3);
