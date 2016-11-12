@@ -175,6 +175,13 @@ enum EnumTsdSpaceInterpolate { INTERPOLATE_SUCCESS=0,
 	 */
 	void push(Sensor* sensor);
 
+
+  /**
+   * Push sensor data to space using forward raycast
+   * @param[in] sensor abstract sensor instance holding current data
+   */
+  void pushForward(Sensor* const sensor);
+
 	/**
 	 * Push sensor data to space using octree insertion
 	 * @param[in] sensor abstract sensor instance holding current data

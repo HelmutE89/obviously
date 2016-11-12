@@ -44,24 +44,23 @@ TsdSpace::TsdSpace(const double voxelSize, const EnumTsdSpaceLayout layoutPartit
 
   if(dimPartition > _cellsX)
   {
-    LOGMSG(DBG_ERROR, "Insufficient partition size : " << dimPartition << "x" << dimPartition << "x" << dimPartition << " in "
-        << _cellsX << "x" << _cellsY << "x" << _cellsZ << " space");
+    LOGMSG(DBG_ERROR, "Insufficient partition size : " << dimPartition << "x" << dimPartition << "x" << dimPartition << " in " << _cellsX << "x" << _cellsY << "x" << _cellsZ << " space");
     return;
   }
 
-  _partitionsInX = _cellsX/dimPartition;
-  _partitionsInY = _cellsY/dimPartition;
-  _partitionsInZ = _cellsZ/dimPartition;
+  _partitionsInX = _cellsX / dimPartition;
+  _partitionsInY = _cellsY / dimPartition;
+  _partitionsInZ = _cellsZ / dimPartition;
 
   _lutIndex2Partition = new int[_cellsX];
   _lutIndex2Cell = new int[_cellsX];
-  for(unsigned int i=0; i<_cellsX; i++)
+  for(unsigned int i = 0; i < _cellsX; i++)
   {
     _lutIndex2Partition[i] = i / dimPartition;
     _lutIndex2Cell[i] = i % dimPartition;
   }
 
-  _maxTruncation = 2.0*voxelSize;
+  _maxTruncation = 2.0 * voxelSize;
 
   LOGMSG(DBG_DEBUG, "Dimensions are (x/y/z) (" << _cellsX << "/" << _cellsY << "/" << _cellsZ << ")");
   LOGMSG(DBG_DEBUG, "Creating TsdVoxel Space...");
@@ -77,18 +76,18 @@ TsdSpace::TsdSpace(const double voxelSize, const EnumTsdSpaceLayout layoutPartit
   LOGMSG(DBG_DEBUG, "Spanning area: " << _maxX << " " << _maxY << " " << _maxZ << endl;)
   System<TsdSpacePartition*>::allocate(_partitionsInZ, _partitionsInY, _partitionsInX, _partitions);
 
-  for(int pz=0; pz<_partitionsInZ; pz++)
+  for(int pz = 0; pz < _partitionsInZ; pz++)
   {
-    for(int py=0; py<_partitionsInY; py++)
+    for(int py = 0; py < _partitionsInY; py++)
     {
-      for(int px=0; px<_partitionsInX; px++)
+      for(int px = 0; px < _partitionsInX; px++)
       {
-        _partitions[pz][py][px] = new TsdSpacePartition(px*dimPartition, py*dimPartition, pz*dimPartition, dimPartition, dimPartition, dimPartition, voxelSize);
+        _partitions[pz][py][px] = new TsdSpacePartition(px * dimPartition, py * dimPartition, pz * dimPartition, dimPartition, dimPartition, dimPartition, voxelSize);
       }
     }
   }
 
-  int depthTree = layoutSpace-layoutPartition;
+  int depthTree = layoutSpace - layoutPartition;
   if(depthTree == 0)
   {
     _tree = _partitions[0][0][0];
@@ -104,17 +103,17 @@ TsdSpace::~TsdSpace(void)
 {
   delete _tree;
   System<TsdSpacePartition*>::deallocate(_partitions);
-  delete [] _lutIndex2Partition;
-  delete [] _lutIndex2Cell;
+  delete[] _lutIndex2Partition;
+  delete[] _lutIndex2Cell;
 }
 
 void TsdSpace::reset()
 {
-  for(int pz=0; pz<_partitionsInZ; pz++)
+  for(int pz = 0; pz < _partitionsInZ; pz++)
   {
-    for(int py=0; py<_partitionsInY; py++)
+    for(int py = 0; py < _partitionsInY; py++)
     {
-      for(int px=0; px<_partitionsInX; px++)
+      for(int px = 0; px < _partitionsInX; px++)
       {
         _partitions[pz][py][px]->reset();
       }
@@ -148,14 +147,14 @@ void TsdSpace::setMaxTruncation(obfloat val)
 bool TsdSpace::isPartitionInitialized(obfloat coord[3])
 {
   /*int x = (int)(coord[0] * _invVoxelSize);
-  int y = (int)(coord[1] * _invVoxelSize);
-  int z = (int)(coord[2] * _invVoxelSize);
+   int y = (int)(coord[1] * _invVoxelSize);
+   int z = (int)(coord[2] * _invVoxelSize);
 
-  int px = _lutIndex2Partition[x];
-  int py = _lutIndex2Partition[y];
-  int pz = _lutIndex2Partition[z];
+   int px = _lutIndex2Partition[x];
+   int py = _lutIndex2Partition[y];
+   int pz = _lutIndex2Partition[z];
 
-  return _partitions[pz][py][px]->isInitialized();*/
+   return _partitions[pz][py][px]->isInitialized();*/
 
   // Get cell indices
   obfloat dxIdx = floor(coord[0] * _invVoxelSize);
@@ -172,13 +171,13 @@ bool TsdSpace::isPartitionInitialized(obfloat coord[3])
   int z = (int)dzIdx;
 
   // Ensure that query point has 8 neighbors for trilinear interpolation
-  if (coord[0] < dx)
+  if(coord[0] < dx)
     x--;
 
-  if (coord[1] < dy)
+  if(coord[1] < dy)
     y--;
 
-  if (coord[2] < dz)
+  if(coord[2] < dz)
     z--;
 
   int px = _lutIndex2Partition[x];
@@ -192,7 +191,8 @@ bool TsdSpace::isInsideSpace(Sensor* sensor)
 {
   obfloat coord[3];
   sensor->getPosition(coord);
-  return (coord[0]>_minX && coord[0]<_maxX && coord[1]>_minY && coord[1]<_maxY && coord[2]>_minZ && coord[2]<_maxZ);
+  return (coord[0] > _minX && coord[0] < _maxX && coord[1] > _minY && coord[1] < _maxY && coord[2] > _minZ
+      && coord[2] < _maxZ);
 }
 
 void TsdSpace::push(Sensor* sensor)
@@ -215,43 +215,45 @@ void TsdSpace::push(Sensor* sensor)
     unsigned int partSize = (_partitions[0][0][0])->getSize();
     int* idx = new int[partSize];
 #pragma omp for schedule(dynamic)
-    for(int pz=0; pz<_partitionsInZ; pz++)
+    for(int pz = 0; pz < _partitionsInZ; pz++)
     {
-      for(int py=0; py<_partitionsInY; py++)
+      for(int py = 0; py < _partitionsInY; py++)
       {
-        for(int px=0; px<_partitionsInX; px++)
+        for(int px = 0; px < _partitionsInX; px++)
         {
           TsdSpacePartition* part = _partitions[pz][py][px];
-          if(!part->isInRange(tr, sensor, _maxTruncation)) continue;
+          if(!part->isInRange(tr, sensor, _maxTruncation))
+            continue;
 
           obfloat t[3];
           part->getCellCoordsOffset(t);
           Matrix T = MatrixFactory::TranslationMatrix44(t[0], t[1], t[2]);
           sensor->backProject(cellCoordsHom, idx, &T);
 
-          for(unsigned int c=0; c<partSize; c++)
+          for(unsigned int c = 0; c < partSize; c++)
           {
             // Measurement index
             int index = idx[c];
 
-            if(index>=0)
+            if(index >= 0)
             {
               if(mask[index])
               {
                 // calculate distance of current cell to sensor
                 obfloat crd[3];
-                crd[0] = (*cellCoordsHom)(c,0) + t[0];
-                crd[1] = (*cellCoordsHom)(c,1) + t[1];
-                crd[2] = (*cellCoordsHom)(c,2) + t[2];
+                crd[0] = (*cellCoordsHom)(c, 0) + t[0];
+                crd[1] = (*cellCoordsHom)(c, 1) + t[1];
+                crd[2] = (*cellCoordsHom)(c, 2) + t[2];
                 obfloat distance = euklideanDistance<obfloat>(tr, crd, 3);
                 obfloat sd = data[index] - distance;
 
                 // Test with distance-related weighting
                 /*double weight = 1.0 - (10.0 - distance);
-              weight = max(weight, 0.1);*/
+                 weight = max(weight, 0.1);*/
 
                 unsigned char* color = NULL;
-                if(rgb) color = &(rgb[3*index]);
+                if(rgb)
+                  color = &(rgb[3 * index]);
                 if(sd >= -_maxTruncation)
                 {
                   part->init();
@@ -270,7 +272,104 @@ void TsdSpace::push(Sensor* sensor)
         }
       }
     }
-    delete [] idx;
+    delete[] idx;
+  }
+
+  propagateBorders();
+
+#if PRINTSTATISTICS
+  LOGMSG(DBG_DEBUG, "Distances pushed: " << _distancesPushed);
+#endif
+
+  LOGMSG(DBG_DEBUG, "Elapsed push: " << timer.elapsed() << "s, Initialized partitions: " << TsdSpacePartition::getInitializedPartitionSize());
+}
+
+void TsdSpace::pushForward(Sensor* const sensor)
+{
+  Timer timer;
+  timer.start();
+
+  double* data = sensor->getRealMeasurementData();
+  unsigned char* rgbs = sensor->getRealMeasurementRGB();
+  bool* mask = sensor->getRealMeasurementMask();
+  int dim = 3;
+  //unsigned char* rgb = sensor->getRealMeasurementRGB();
+
+  obfloat tr[dim];
+  sensor->getPosition(tr);
+
+  //Matrix* partCoords = TsdSpacePartition::getPartitionCoords();
+  //Matrix* cellCoordsHom = TsdSpacePartition::getCellCoordsHom();
+
+  int rayCount = sensor->getRealMeasurementSize();
+
+  Matrix* rays = sensor->getNormalizedRayMap(1);
+
+  TsdSpacePartition* part = _partitions[0][0][0];
+  unsigned int partSize[3] = {part->getWidth(),part->getHeight(),part->getDepth()};
+
+
+  for(int zTest = 0; zTest < 1; ++zTest)
+  {
+    // 1) for each measurement in sensor, take distance and normal
+    for(int beam = 0; beam < rayCount; ++beam)
+    {
+      if(isinf(data[beam]) || !mask[beam])
+      {
+        continue;
+      }
+
+      unsigned char rgb[3] = {rgbs[beam * 3], rgbs[beam * 3 + 1], rgbs[beam * 3 + 2]};
+
+      // 2) addTsd((*partCoords)(c, 0), (*partCoords)(c, 1), (*partCoords)(c, 2), sd, _maxTruncation, color);
+      //    to cells along ray [-truncation radius; truncation radius]:
+
+      obfloat crd[dim];
+      obfloat beamCrd[dim];
+      for(int i = 0; i < dim; ++i)
+      {
+        crd[i] = (*rays)(i, beam) * data[beam] + tr[i];
+        beamCrd[i] = (crd[i] + (*rays)(i, beam) * (-_maxTruncation));
+      }
+
+      double stepSize = _voxelSize / 2;
+      int steps = _maxTruncation / stepSize;
+
+      for(int i = 0; i < steps * 2; ++i)
+      {
+
+        // => project measurement to cell index
+        int vIdx[dim];
+        int pIdx[dim];
+        int cIdx[dim];
+
+        for(int j = 0; j < dim; ++j)
+        {
+          vIdx[j] = (int)(beamCrd[j] / _voxelSize + 0.5);
+          pIdx[j] = vIdx[j] / partSize[j];
+          cIdx[j] = vIdx[j] % partSize[j];
+        }
+
+        part = _partitions[pIdx[2]][pIdx[1]][pIdx[0]];
+
+        obfloat sd = data[beam] - euklideanDistance<obfloat>(beamCrd, tr, 3);
+
+        part->init();
+        part->addTsd(cIdx[0], cIdx[1], cIdx[2], sd, _maxTruncation, rgb);
+#if PRINTSTATISTICS
+#pragma omp critical
+        {
+          _distancesPushed++;
+        }
+#endif
+
+        for(int j = 0; j < dim; ++j)
+        {
+          beamCrd[j] += (*rays)(j, beam) * stepSize;
+        }
+      }
+    }
+    tr[2] += _voxelSize;
   }
 
   propagateBorders();
@@ -308,7 +407,7 @@ void TsdSpace::pushTree(Sensor* sensor)
     unsigned int partSize = (_partitions[0][0][0])->getSize();
     int* idx = new int[partSize];
 #pragma omp for schedule(dynamic)
-    for(unsigned int i=0; i<partitionsToCheck.size(); i++)
+    for(unsigned int i = 0; i < partitionsToCheck.size(); i++)
     {
       TsdSpacePartition* part = partitionsToCheck[i];
 
@@ -317,29 +416,30 @@ void TsdSpace::pushTree(Sensor* sensor)
       Matrix T = MatrixFactory::TranslationMatrix44(t[0], t[1], t[2]);
       sensor->backProject(cellCoordsHom, idx, &T);
 
-      for(unsigned int c=0; c<partSize; c++)
+      for(unsigned int c = 0; c < partSize; c++)
       {
         // Measurement index
         int index = idx[c];
 
-        if(index>=0)
+        if(index >= 0)
         {
           if(mask[index])
           {
             // calculate distance of current cell to sensor
             obfloat crd[3];
-            crd[0] = (*cellCoordsHom)(c,0) + t[0];
-            crd[1] = (*cellCoordsHom)(c,1) + t[1];
-            crd[2] = (*cellCoordsHom)(c,2) + t[2];
+            crd[0] = (*cellCoordsHom)(c, 0) + t[0];
+            crd[1] = (*cellCoordsHom)(c, 1) + t[1];
+            crd[2] = (*cellCoordsHom)(c, 2) + t[2];
             obfloat distance = euklideanDistance<obfloat>(tr, crd, 3);
             obfloat sd = data[index] - distance;
 
             // Test with distance-related weighting
             /*double weight = 1.0 - (10.0 - distance);
-          weight = max(weight, 0.1);*/
+             weight = max(weight, 0.1);*/
 
             unsigned char* color = NULL;
-            if(rgb) color = &(rgb[3*index]);
+            if(rgb)
+              color = &(rgb[3 * index]);
             if(sd >= -_maxTruncation)
             {
               part->init();
@@ -357,7 +457,7 @@ void TsdSpace::pushTree(Sensor* sensor)
         }
       }
     }
-    delete [] idx;
+    delete[] idx;
   }
 
   propagateBorders();
@@ -378,7 +478,7 @@ void TsdSpace::pushRecursion(Sensor* sensor, obfloat pos[3], TsdSpaceComponent* 
     else
     {
       vector<TsdSpaceComponent*> children = ((TsdSpaceBranch*)comp)->getChildren();
-      for(unsigned int i=0; i<children.size(); i++)
+      for(unsigned int i = 0; i < children.size(); i++)
         pushRecursion(sensor, pos, children[i], partitionsToCheck);
     }
   }
@@ -386,29 +486,30 @@ void TsdSpace::pushRecursion(Sensor* sensor, obfloat pos[3], TsdSpaceComponent* 
 
 void TsdSpace::propagateBorders()
 {
-  unsigned int width  = _partitions[0][0][0]->getWidth();
+  unsigned int width = _partitions[0][0][0]->getWidth();
   unsigned int height = _partitions[0][0][0]->getHeight();
   unsigned int depth = _partitions[0][0][0]->getDepth();
 
   // Copy valid tsd values of neighbors to borders of each partition.
-  for(int pz=0; pz<_partitionsInZ; pz++)
+  for(int pz = 0; pz < _partitionsInZ; pz++)
   {
-    for(int py=0; py<_partitionsInY; py++)
+    for(int py = 0; py < _partitionsInY; py++)
     {
-      for(int px=0; px<_partitionsInX; px++)
+      for(int px = 0; px < _partitionsInX; px++)
       {
-        TsdSpacePartition* partCur       = _partitions[pz][py][px];
+        TsdSpacePartition* partCur = _partitions[pz][py][px];
 
-        if(!partCur->isInitialized()) continue;
+        if(!partCur->isInitialized())
+          continue;
 
-        if(px<_partitionsInX-1)
+        if(px < _partitionsInX - 1)
         {
-          TsdSpacePartition* partRight      = _partitions[pz][py][px+1];
+          TsdSpacePartition* partRight = _partitions[pz][py][px + 1];
           if(partRight->isInitialized())
           {
-            for(unsigned int d=0; d<depth; d++)
+            for(unsigned int d = 0; d < depth; d++)
             {
-              for(unsigned int h=0; h<height; h++)
+              for(unsigned int h = 0; h < height; h++)
               {
                 partCur->_space[d][h][width].tsd = partRight->_space[d][h][0].tsd;
                 partCur->_space[d][h][width].weight = partRight->_space[d][h][0].weight;
@@ -420,14 +521,14 @@ void TsdSpace::propagateBorders()
           }
         }
 
-        if(py<_partitionsInY-1)
+        if(py < _partitionsInY - 1)
         {
-          TsdSpacePartition* partUp      = _partitions[pz][py+1][px];
+          TsdSpacePartition* partUp = _partitions[pz][py + 1][px];
           if(partUp->isInitialized())
           {
-            for(unsigned int d=0; d<depth; d++)
+            for(unsigned int d = 0; d < depth; d++)
             {
-              for(unsigned int w=0; w<width; w++)
+              for(unsigned int w = 0; w < width; w++)
               {
                 partCur->_space[d][height][w].tsd = partUp->_space[d][0][w].tsd;
                 partCur->_space[d][height][w].weight = partUp->_space[d][0][w].weight;
@@ -439,14 +540,14 @@ void TsdSpace::propagateBorders()
           }
         }
 
-        if(pz<_partitionsInZ-1)
+        if(pz < _partitionsInZ - 1)
         {
-          TsdSpacePartition* partBack      = _partitions[pz+1][py][px];
+          TsdSpacePartition* partBack = _partitions[pz + 1][py][px];
           if(partBack->isInitialized())
           {
-            for(unsigned int h=0; h<height; h++)
+            for(unsigned int h = 0; h < height; h++)
             {
-              for(unsigned int w=0; w<width; w++)
+              for(unsigned int w = 0; w < width; w++)
               {
                 partCur->_space[depth][h][w].tsd = partBack->_space[0][h][w].tsd;
                 partCur->_space[depth][h][w].weight = partBack->_space[0][h][w].weight;
@@ -458,12 +559,12 @@ void TsdSpace::propagateBorders()
           }
         }
 
-        if(px<_partitionsInX-1 && pz<_partitionsInZ-1)
+        if(px < _partitionsInX - 1 && pz < _partitionsInZ - 1)
         {
-          TsdSpacePartition* partRightBack      = _partitions[pz+1][py][px+1];
+          TsdSpacePartition* partRightBack = _partitions[pz + 1][py][px + 1];
           if(partRightBack->isInitialized())
           {
-            for(unsigned int h=0; h<height; h++)
+            for(unsigned int h = 0; h < height; h++)
             {
               partCur->_space[depth][h][width].tsd = partRightBack->_space[0][h][0].tsd;
               partCur->_space[depth][h][width].weight = partRightBack->_space[0][h][0].weight;
@@ -474,12 +575,12 @@ void TsdSpace::propagateBorders()
           }
         }
 
-        if(px<_partitionsInX-1 && py<_partitionsInY-1)
+        if(px < _partitionsInX - 1 && py < _partitionsInY - 1)
         {
-          TsdSpacePartition* partRightUp      = _partitions[pz][py+1][px+1];
+          TsdSpacePartition* partRightUp = _partitions[pz][py + 1][px + 1];
           if(partRightUp->isInitialized())
           {
-            for(unsigned int d=0; d<depth; d++)
+            for(unsigned int d = 0; d < depth; d++)
             {
               partCur->_space[d][height][width].tsd = partRightUp->_space[d][0][0].tsd;
               partCur->_space[d][height][width].weight = partRightUp->_space[d][0][0].weight;
@@ -490,12 +591,12 @@ void TsdSpace::propagateBorders()
           }
         }
 
-        if(py<_partitionsInY-1 && pz<_partitionsInZ-1)
+        if(py < _partitionsInY - 1 && pz < _partitionsInZ - 1)
         {
-          TsdSpacePartition* partBackUp      = _partitions[pz+1][py+1][px];
+          TsdSpacePartition* partBackUp = _partitions[pz + 1][py + 1][px];
           if(partBackUp->isInitialized())
           {
-            for(unsigned int w=0; w<width; w++)
+            for(unsigned int w = 0; w < width; w++)
             {
               partCur->_space[depth][height][w].tsd = partBackUp->_space[0][0][w].tsd;
               partCur->_space[depth][height][w].weight = partBackUp->_space[0][0][w].weight;
@@ -506,9 +607,9 @@ void TsdSpace::propagateBorders()
           }
         }
 
-        if(px<_partitionsInX-1 && py<_partitionsInY-1 && pz<_partitionsInZ-1 )
+        if(px < _partitionsInX - 1 && py < _partitionsInY - 1 && pz < _partitionsInZ - 1)
         {
-          TsdSpacePartition* partBackRightUp      = _partitions[pz+1][py+1][px+1];
+          TsdSpacePartition* partBackRightUp = _partitions[pz + 1][py + 1][px + 1];
           if(partBackRightUp->isInitialized())
           {
             partCur->_space[depth][height][width].tsd = partBackRightUp->_space[0][0][0].tsd;
@@ -533,14 +634,14 @@ bool TsdSpace::interpolateNormal(const obfloat* coord, obfloat* normal)
   neighbor[0] = coord[0] + _voxelSize;
   neighbor[1] = coord[1];
   neighbor[2] = coord[2];
-  if(interpolateTrilinear(neighbor, &depthVarInc)!=INTERPOLATE_SUCCESS)
+  if(interpolateTrilinear(neighbor, &depthVarInc) != INTERPOLATE_SUCCESS)
     return false;
 
   //interpolate around Voxel in x-1 direction
   neighbor[0] = coord[0] - _voxelSize;
   //neighbor[1] = coord[1];
   //neighbor[2] = coord[2];
-  if(interpolateTrilinear(neighbor, &depthVarDec)!=INTERPOLATE_SUCCESS)
+  if(interpolateTrilinear(neighbor, &depthVarDec) != INTERPOLATE_SUCCESS)
     return false;
 
   //x-coordinate of normal vector
@@ -550,14 +651,14 @@ bool TsdSpace::interpolateNormal(const obfloat* coord, obfloat* normal)
   neighbor[0] = coord[0];
   neighbor[1] = coord[1] + _voxelSize;
   //neighbor[2] = coord[2];
-  if(interpolateTrilinear(neighbor, &depthVarInc)!=INTERPOLATE_SUCCESS)
+  if(interpolateTrilinear(neighbor, &depthVarInc) != INTERPOLATE_SUCCESS)
     return false;
 
   //interpolate around Voxel in y-1 direction
   //neighbor[0] = coord[0];
   neighbor[1] = coord[1] - _voxelSize;
   //neighbor[2] = coord[2];
-  if(interpolateTrilinear(neighbor, &depthVarDec)!=INTERPOLATE_SUCCESS)
+  if(interpolateTrilinear(neighbor, &depthVarDec) != INTERPOLATE_SUCCESS)
     return false;
 
   //y-coordinate of normal vector
@@ -567,14 +668,14 @@ bool TsdSpace::interpolateNormal(const obfloat* coord, obfloat* normal)
   //neighbor[0] = coord[0];
   neighbor[1] = coord[1];
   neighbor[2] = coord[2] + _voxelSize;
-  if(interpolateTrilinear(neighbor, &depthVarInc)!=INTERPOLATE_SUCCESS)
+  if(interpolateTrilinear(neighbor, &depthVarInc) != INTERPOLATE_SUCCESS)
     return false;
 
   //interpolate around Voxel in z-1 direction
   //neighbor[0] = coord[0];
   //neighbor[1] = coord[1];
   neighbor[2] = coord[2] - _voxelSize;
-  if(interpolateTrilinear(neighbor, &depthVarDec)!=INTERPOLATE_SUCCESS)
+  if(interpolateTrilinear(neighbor, &depthVarDec) != INTERPOLATE_SUCCESS)
     return false;
 
   //z-coordinate of normal vector
@@ -602,17 +703,17 @@ bool TsdSpace::coord2Index(obfloat coord[3], int* x, int* y, int* z, obfloat* dx
   *z = (int)dzIdx;
 
   // Ensure that query point has 8 neighbors for trilinear interpolation
-  if (coord[0] < *dx)
+  if(coord[0] < *dx)
   {
     (*x)--;
     (*dx) -= _voxelSize;
   }
-  if (coord[1] < *dy)
+  if(coord[1] < *dy)
   {
     (*y)--;
     (*dy) -= _voxelSize;
   }
-  if (coord[2] < *dz)
+  if(coord[2] < *dz)
   {
     (*z)--;
     (*dz) -= _voxelSize;
@@ -620,14 +721,14 @@ bool TsdSpace::coord2Index(obfloat coord[3], int* x, int* y, int* z, obfloat* dx
 
   // Check boundaries -> should never happen
   /*if ((*x >= (int)_cellsX) || (*x < 0) || (*y >= (int)_cellsY) || (*y < 0) || (*z >= (int)_cellsZ) || *z < 0)
-  {
-#pragma omp critical
-{
-    cout << "coord not in space: " << coord[0] << " " << coord[1] << " " << coord[2] << " assigned: " << *x << " " << *y << " " << *z << endl;
-    //abort();
-}
-    return false;
-  }*/
+   {
+   #pragma omp critical
+   {
+   cout << "coord not in space: " << coord[0] << " " << coord[1] << " " << coord[2] << " assigned: " << *x << " " << *y << " " << *z << endl;
+   //abort();
+   }
+   return false;
+   }*/
 
   return true;
 }
@@ -641,14 +742,16 @@ EnumTsdSpaceInterpolate TsdSpace::interpolateTrilinear(obfloat coord[3], obfloat
   int xIdx;
   int yIdx;
   int zIdx;
-  if(!coord2Index(coord, &xIdx, &yIdx, &zIdx, &dx, &dy, &dz)) return INTERPOLATE_INVALIDINDEX;
+  if(!coord2Index(coord, &xIdx, &yIdx, &zIdx, &dx, &dy, &dz))
+    return INTERPOLATE_INVALIDINDEX;
 
   int px = _lutIndex2Partition[xIdx];
   int py = _lutIndex2Partition[yIdx];
   int pz = _lutIndex2Partition[zIdx];
 
   TsdSpacePartition* part = _partitions[pz][py][px];
-  if(!part->isInitialized()) return INTERPOLATE_EMPTYPARTITION;
+  if(!part->isInitialized())
+    return INTERPOLATE_EMPTYPARTITION;
 
   int x = _lutIndex2Cell[xIdx];
   int y = _lutIndex2Cell[yIdx];
@@ -660,7 +763,8 @@ EnumTsdSpaceInterpolate TsdSpace::interpolateTrilinear(obfloat coord[3], obfloat
 
   *tsd = part->interpolateTrilinear(x, y, z, wx, wy, wz);
 
-  if(isnan(*tsd)) return INTERPOLATE_ISNAN;
+  if(isnan(*tsd))
+    return INTERPOLATE_ISNAN;
 
   return INTERPOLATE_SUCCESS;
 }
@@ -674,14 +778,16 @@ EnumTsdSpaceInterpolate TsdSpace::getTsd(obfloat coord[3], obfloat* tsd)
   int xIdx;
   int yIdx;
   int zIdx;
-  if(!coord2Index(coord, &xIdx, &yIdx, &zIdx, &dx, &dy, &dz)) return INTERPOLATE_INVALIDINDEX;
+  if(!coord2Index(coord, &xIdx, &yIdx, &zIdx, &dx, &dy, &dz))
+    return INTERPOLATE_INVALIDINDEX;
 
   int px = _lutIndex2Partition[xIdx];
   int py = _lutIndex2Partition[yIdx];
   int pz = _lutIndex2Partition[zIdx];
 
   TsdSpacePartition* part = _partitions[pz][py][px];
-  if(!part->isInitialized()) return INTERPOLATE_EMPTYPARTITION;
+  if(!part->isInitialized())
+    return INTERPOLATE_EMPTYPARTITION;
 
   int x = _lutIndex2Cell[xIdx];
   int y = _lutIndex2Cell[yIdx];
@@ -689,7 +795,8 @@ EnumTsdSpaceInterpolate TsdSpace::getTsd(obfloat coord[3], obfloat* tsd)
 
   *tsd = (*part)(z, y, x);
 
-  if(isnan(*tsd)) return INTERPOLATE_ISNAN;
+  if(isnan(*tsd))
+    return INTERPOLATE_ISNAN;
 
   return INTERPOLATE_SUCCESS;
 }
@@ -703,14 +810,16 @@ EnumTsdSpaceInterpolate TsdSpace::interpolateTrilinearRGB(obfloat coord[3], unsi
   int xIdx;
   int yIdx;
   int zIdx;
-  if(!coord2Index(coord, &xIdx, &yIdx, &zIdx, &dx, &dy, &dz)) return INTERPOLATE_INVALIDINDEX;
+  if(!coord2Index(coord, &xIdx, &yIdx, &zIdx, &dx, &dy, &dz))
+    return INTERPOLATE_INVALIDINDEX;
 
   int px = _lutIndex2Partition[xIdx];
   int py = _lutIndex2Partition[yIdx];
   int pz = _lutIndex2Partition[zIdx];
 
   TsdSpacePartition* part = _partitions[pz][py][px];
-  if(!part->isInitialized()) return INTERPOLATE_EMPTYPARTITION;
+  if(!part->isInitialized())
+    return INTERPOLATE_EMPTYPARTITION;
 
   int x = _lutIndex2Cell[xIdx];
   int y = _lutIndex2Cell[yIdx];
@@ -722,14 +831,14 @@ EnumTsdSpaceInterpolate TsdSpace::interpolateTrilinearRGB(obfloat coord[3], unsi
 
   unsigned char pRGB[8][3];
 
-  part->getRGB(z+0, y+0, x+0, pRGB[0]);
-  part->getRGB(z+1, y+0, x+0, pRGB[1]);
-  part->getRGB(z+0, y+1, x+0, pRGB[2]);
-  part->getRGB(z+1, y+1, x+0, pRGB[3]);
-  part->getRGB(z+0, y+0, x+1, pRGB[4]);
-  part->getRGB(z+1, y+0, x+1, pRGB[5]);
-  part->getRGB(z+0, y+1, x+1, pRGB[6]);
-  part->getRGB(z+1, y+1, x+1, pRGB[7]);
+  part->getRGB(z + 0, y + 0, x + 0, pRGB[0]);
+  part->getRGB(z + 1, y + 0, x + 0, pRGB[1]);
+  part->getRGB(z + 0, y + 1, x + 0, pRGB[2]);
+  part->getRGB(z + 1, y + 1, x + 0, pRGB[3]);
+  part->getRGB(z + 0, y + 0, x + 1, pRGB[4]);
+  part->getRGB(z + 1, y + 0, x + 1, pRGB[5]);
+  part->getRGB(z + 0, y + 1, x + 1, pRGB[6]);
+  part->getRGB(z + 1, y + 1, x + 1, pRGB[7]);
 
   double pw[8];
   pw[0] = (1. - wx) * (1. - wy) * (1. - wz);
@@ -741,8 +850,8 @@ EnumTsdSpaceInterpolate TsdSpace::interpolateTrilinearRGB(obfloat coord[3], unsi
   pw[6] = wx * wy * (1. - wz);
   pw[7] = wx * wy * wz;
 
-  memset(rgb,0,3);
-  for(unsigned int i=0; i<8; i++)
+  memset(rgb, 0, 3);
+  for(unsigned int i = 0; i < 8; i++)
   {
     rgb[0] += pRGB[i][0] * pw[i];
     rgb[1] += pRGB[i][1] * pw[i];
@@ -753,55 +862,55 @@ EnumTsdSpaceInterpolate TsdSpace::interpolateTrilinearRGB(obfloat coord[3], unsi
 }
 
 /*bool TsdSpace::buildSliceImage(const unsigned int depthIndex, unsigned char* image)
-{
-  unsigned char R[_cellsX * _cellsY];
-  unsigned char G[_cellsX * _cellsY];
-  unsigned char B[_cellsX * _cellsY];
-  unsigned int ctr = 0;
-  unsigned im_ctr = 0;
-  double cTsd;
+ {
+ unsigned char R[_cellsX * _cellsY];
+ unsigned char G[_cellsX * _cellsY];
+ unsigned char B[_cellsX * _cellsY];
+ unsigned int ctr = 0;
+ unsigned im_ctr = 0;
+ double cTsd;
 
-  // initialize arrays for RGB
-  for (unsigned int i = 0; i < _cellsX * _cellsY; i++)
-  {
-    R[i] = 0;
-    G[i] = 0;
-    B[i] = 0;
-  }
+ // initialize arrays for RGB
+ for (unsigned int i = 0; i < _cellsX * _cellsY; i++)
+ {
+ R[i] = 0;
+ G[i] = 0;
+ B[i] = 0;
+ }
 
-  // iterate over given slice, generate 2D-Picture
-  for (unsigned int row = 0; row < _cellsY; row++)
-  {
-    for (unsigned int col = 0; col < _cellsX; col++)
-    {
-      // Get current tsd
-      cTsd = _space[depthIndex][row][col].tsd;
-
-
-      if (isnan(cTsd))
-          G[im_ctr++] = (unsigned char) 150; //row*_cellsX+col
-      // Blue for depth behind Voxel
-      else if (cTsd > 0)
-          B[im_ctr++] = (unsigned char) (cTsd * RGB_MAX + 0.5); //row*_cellsX+col
+ // iterate over given slice, generate 2D-Picture
+ for (unsigned int row = 0; row < _cellsY; row++)
+ {
+ for (unsigned int col = 0; col < _cellsX; col++)
+ {
+ // Get current tsd
+ cTsd = _space[depthIndex][row][col].tsd;
 
 
-      // Red for depth in front of Voxel
-      else if (cTsd < 0)
-          R[im_ctr++] = (unsigned char) ((cTsd * -1.0) * RGB_MAX + 0.5); //row*_cellsX+col
-    }
-  }
+ if (isnan(cTsd))
+ G[im_ctr++] = (unsigned char) 150; //row*_cellsX+col
+ // Blue for depth behind Voxel
+ else if (cTsd > 0)
+ B[im_ctr++] = (unsigned char) (cTsd * RGB_MAX + 0.5); //row*_cellsX+col
 
-  //put components together to complete picture
-  for (unsigned int i = 0; i < _cellsX * _cellsY * 3; i++)
-  {
-    image[i]   = R[ctr];
-    image[++i] = G[ctr];
-    image[++i] = B[ctr];
-    ctr++;
-  }
 
-  return (true);
-}*/
+ // Red for depth in front of Voxel
+ else if (cTsd < 0)
+ R[im_ctr++] = (unsigned char) ((cTsd * -1.0) * RGB_MAX + 0.5); //row*_cellsX+col
+ }
+ }
+
+ //put components together to complete picture
+ for (unsigned int i = 0; i < _cellsX * _cellsY * 3; i++)
+ {
+ image[i]   = R[ctr];
+ image[++i] = G[ctr];
+ image[++i] = B[ctr];
+ ctr++;
+ }
+
+ return (true);
+ }*/
 
 void TsdSpace::serialize(const char* filename)
 {
@@ -810,16 +919,17 @@ void TsdSpace::serialize(const char* filename)
 
   f << _voxelSize << " " << (int)_layoutPartition << " " << (int)_layoutSpace << " " << _maxTruncation << endl;
 
-  for(int pz=0; pz<_partitionsInZ; pz++)
+  for(int pz = 0; pz < _partitionsInZ; pz++)
   {
-    for(int py=0; py<_partitionsInY; py++)
+    for(int py = 0; py < _partitionsInY; py++)
     {
-      for(int px=0; px<_partitionsInX; px++)
+      for(int px = 0; px < _partitionsInX; px++)
       {
         f << _partitions[pz][py][px]->getInitWeight() << endl;
         bool initialized = _partitions[pz][py][px]->isInitialized();
         f << initialized << endl;
-        if(initialized) _partitions[pz][py][px]->serialize(&f);
+        if(initialized)
+          _partitions[pz][py][px]->serialize(&f);
       }
     }
   }
@@ -853,18 +963,19 @@ TsdSpace* TsdSpace::load(const char* filename)
   space->setMaxTruncation(maxTruncation);
   TsdSpacePartition**** partitions = space->getPartitions();
 
-  for(int pz=0; pz<space->getPartitionsInZ(); pz++)
+  for(int pz = 0; pz < space->getPartitionsInZ(); pz++)
   {
-    for(int py=0; py<space->getPartitionsInY(); py++)
+    for(int py = 0; py < space->getPartitionsInY(); py++)
     {
-      for(int px=0; px<space->getPartitionsInX(); px++)
+      for(int px = 0; px < space->getPartitionsInX(); px++)
       {
         double initWeight;
         f >> initWeight;
         partitions[pz][py][px]->setInitWeight(initWeight);
         bool initialized;
         f >> initialized;
-        if(initialized) partitions[pz][py][px]->load(&f);
+        if(initialized)
+          partitions[pz][py][px]->load(&f);
       }
     }
   }

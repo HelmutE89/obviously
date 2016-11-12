@@ -49,6 +49,7 @@ add_library(obvision STATIC
 	reconstruct/grid/RayCastPolar2D.cpp
 	reconstruct/grid/RayCastAxisAligned2D.cpp
 	reconstruct/space/SensorPolar3D.cpp
+	reconstruct/space/SensorPolar2DWith3DPose.cpp
 	reconstruct/space/SensorProjective3D.cpp
 	reconstruct/space/SensorPolar3D.cpp
 	reconstruct/space/TsdSpace.cpp
