@@ -19,8 +19,16 @@ SensorPolar2DWith3DPose* _sensor;
 TsdSpace* _space;
 VtkCloud* _vcloud;
 
+double NOISE_RANGE = 0.02;
+double WALL_DISTANCE = 0.3;
+int WOBBLE_RANGE_DEG = 5;
+double Z_STEP_SIZE = 0.01 / 16;
+double ANGULAR_RES_DEG = 0.125;
+
+
 void generateSyntheticData(SensorPolar2DWith3DPose& sensor)
 {
+
   int beams = sensor.getRealMeasurementSize();
   //double angularRes = sensor.getAngularResolution();
   //double minPhi = sensor.getPhiMin();
@@ -32,21 +40,26 @@ void generateSyntheticData(SensorPolar2DWith3DPose& sensor)
   double* data = new double[beams];
   unsigned char* rgb = new unsigned char[beams * 3];
 
-  Matrix T = _sensor->getTransformation();
+  Matrix T = sensor.getTransformation();
+
   Matrix* rays = sensor.getNormalizedRayMap(1);
-  double wallDistance = 1;
+
+
   for(int i = 0; i < beams; i++)
   {
     double n[2] = {0,0};
 
     //wall on x
-    n[0] = std::abs(wallDistance / (*rays)(0, i));
+    n[0] = std::abs(WALL_DISTANCE / (*rays)(0, i));
 
     //wall on y
-    n[1] = std::abs(wallDistance / (*rays)(1, i));
+    n[1] = std::abs(WALL_DISTANCE / (*rays)(1, i));
 
     //take nearest wall for distance
     double min = n[0] < n[1] ? n[0] : n[1];
+    cout << "min1 " << min << endl;
+    min += -NOISE_RANGE + ((double)rand() / RAND_MAX) * NOISE_RANGE * 2;
+    cout << "min2 " << min << endl;
 
     //check maxRange
     data[i] = min <= maxRange ? min : NAN;
@@ -59,27 +72,51 @@ void generateSyntheticData(SensorPolar2DWith3DPose& sensor)
   sensor.setStandardMask();
 }
 
+void extractEulerAngleXYZ(Matrix t, double& rotXangle, double& rotYangle, double& rotZangle)
+{
+  rotXangle = atan2(-t(1, 2), t(2, 2));
+  double cosYangle = sqrt(pow(t(0, 0), 2) + pow(t(0, 1), 2));
+  rotYangle = atan2(t(0, 2), cosYangle);
+  double sinXangle = sin(rotXangle);
+  double cosXangle = cos(rotXangle);
+  rotZangle = atan2(cosXangle * t(1, 0) + sinXangle * t(2, 0), cosXangle * t(1, 1) + sinXangle * t(2, 1));
+}
+
 void _cbRegNewImage(void)
 {
-  //double tf[16] = {
-  //    1, 0, 0, 1,
-  //    0, 1, 0, 1,
-  //    0, 0, 1, 1
-  //};
-  //
-  //Matrix T(4, 4);
-  //T.setData(tf);
-  //_sensor->transform(&T);
+  Matrix currentT = _sensor->getTransformation();
+  double rotXangle, rotYangle, rotZangle;
+  extractEulerAngleXYZ(currentT,rotXangle, rotYangle, rotZangle);
 
-  Matrix T = _sensor->getTransformation();
-  T(2, 3) = T(2, 3) + 0.01;
-  _sensor->setTransformation(T);
+  rotYangle = rotYangle / M_PI * 180;
+  rotYangle *= -1;
+  rotYangle += -WOBBLE_RANGE_DEG + rand()%(WOBBLE_RANGE_DEG * 2 + 1);
+  rotYangle = rotYangle * M_PI / 180;
+
+  rotXangle = rotXangle / M_PI * 180;
+  rotXangle *= -1;
+  rotXangle += -WOBBLE_RANGE_DEG + rand()%(WOBBLE_RANGE_DEG * 2 + 1);
+  rotXangle = rotXangle * M_PI / 180;
 
 
+  double tf[16] = {
+      cos(rotYangle),   sin(rotYangle) * sin(rotXangle),  sin(rotYangle) * cos(rotXangle),  0,
+      0,                cos(rotXangle),                   -sin(rotXangle),                  0,
+      -sin(rotYangle),  cos(rotYangle) * sin(rotXangle),  cos(rotYangle)*cos(rotXangle),    0,
+      0,                0,                                0,                                1
+  };
+
+  Matrix T(4, 4);
+  T.setData(tf);
+  _sensor->transform(&T);
+
+  currentT= _sensor->getTransformation();
+  currentT(2,3) += Z_STEP_SIZE;
+  _sensor->setTransformation(currentT);
 
   generateSyntheticData(*_sensor);
   _space->pushForward(_sensor);
-  _viewer->showSensorPose(T);
+  _viewer->showSensorPose(currentT);
 
   unsigned int cnt;
 
@@ -109,21 +146,21 @@ int main(void)
   // translation of sensor
   obfloat tr[3];
   _space->getCentroid(tr);
-  tr[2] = 0.03;
+  tr[2] = 0.1;
 
   // rotation about y-axis of sensor
-  double theta = 0.0 * M_PI / 180;
+  double theta = 0 * M_PI / 180;
 
   double tf[16] = {cos(theta), 0, sin(theta), tr[0], 0, 1, 0, tr[1], -sin(theta), 0, cos(theta), tr[2], 0, 0, 0, 1};
   Matrix T(4, 4);
   T.setData(tf);
 
   // Sensor initialization
-  double angularResDeg = 0.125;
-  int beams = 360 / angularResDeg;
-  double angularResRad = deg2rad(angularResDeg);
+
+  int beams = 360 / ANGULAR_RES_DEG;
+  double angularResRad = deg2rad(ANGULAR_RES_DEG);
   double minPhi = deg2rad(-180.0);
-  double maxRange = 2.0;
+  double maxRange = 3.0;
   double minRange = 0.3;
   double lowReflectivityRange = 0.5;
 
